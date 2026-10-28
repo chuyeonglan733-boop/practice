@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>콩콩 간식 키오스크</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8f6ff;--surface:#fff;--ink:#23324a;--muted:#5d6f8a;--accent:#ff8a3d;--accent-ink:#fff;--sel:#2fa86b;--line:#bfe0f5;--warn:#e5484d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10202f;--surface:#1b3248;--ink:#f2f7ff;--muted:#a9bdd6;--line:#2f4d6b;--sel:#43c985}}
+:root[data-theme="dark"]{--bg:#10202f;--surface:#1b3248;--ink:#f2f7ff;--muted:#a9bdd6;--line:#2f4d6b;--sel:#43c985}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:'Jua','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;font-size:20px;display:flex;justify-content:center}
+#app{width:100%;max-width:760px;padding:16px;display:flex;flex-direction:column;gap:16px;min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.steps{display:flex;gap:8px;flex:1}
+.steps span{flex:1;height:14px;border-radius:7px;background:var(--line)}
+.steps span.on{background:var(--accent)}
+.steps span.done{background:var(--sel)}
+.say{border:0;background:var(--surface);color:var(--ink);font:inherit;font-size:28px;width:56px;height:56px;border-radius:50%;cursor:pointer;border:3px solid var(--line)}
+h1{font-size:clamp(28px,6vw,40px);margin:4px 0;line-height:1.25}
+.sub{color:var(--muted);margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.card{position:relative;background:var(--surface);border:4px solid var(--line);border-radius:28px;padding:18px 10px;text-align:center;cursor:pointer;font:inherit;color:var(--ink);min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.card:focus-visible,.btn:focus-visible,.say:focus-visible,.pm:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.card .e{font-size:64px;line-height:1}
+.card .n{font-size:24px}
+.card.sel{border-color:var(--sel);background:color-mix(in srgb,var(--sel) 14%,var(--surface))}
+.badge{position:absolute;top:-10px;right:-6px;min-width:44px;height:44px;border-radius:22px;background:var(--sel);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.pm{display:flex;gap:10px;align-items:center;margin-top:4px}
+.pm button{width:52px;height:52px;border-radius:50%;border:3px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:30px;cursor:pointer}
+.pm b{font-size:28px;min-width:24px;font-weight:400}
+.foot{margin-top:auto;display:flex;gap:12px;padding-top:8px}
+.btn{flex:1;min-height:76px;border-radius:38px;border:0;font:inherit;font-size:28px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn.ghost{background:var(--surface);color:var(--ink);border:4px solid var(--line);flex:.6}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.hint{min-height:28px;color:var(--warn);text-align:center;margin:0}
+.center{align-items:center;text-align:center;justify-content:center;flex:1;display:flex;flex-direction:column;gap:14px}
+.big{font-size:120px;line-height:1}
+.cart{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:14px;background:var(--surface);border:4px solid var(--line);border-radius:24px;padding:12px 18px}
+.row .e{font-size:52px}.row .n{font-size:26px;flex:1}.row .q{font-size:26px;color:var(--sel)}
+.tag{font-size:16px;color:var(--muted);text-align:center}
+.reader{width:220px;height:220px;border-radius:50%;border:8px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:44px;position:relative;background:var(--surface)}
+.reader::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:6px solid var(--accent);animation:ping 1.6s ease-out infinite}
+.reader.ok{border-color:var(--sel)}.reader.ok::after{border-color:var(--sel);animation:none;opacity:0}
+.reader.busy::after{animation-duration:.5s}
+@keyframes ping{from{transform:scale(1);opacity:.8}to{transform:scale(1.35);opacity:0}}
+.mycard{font:inherit;font-size:64px;width:200px;height:124px;border-radius:18px;border:4px solid var(--ink);background:linear-gradient(135deg,#5b8cff,#8f6bff);cursor:pointer;transition:transform .6s ease;touch-action:manipulation;color:#fff}
+.mycard.tap{transform:translateY(-190px) scale(.7)}
+@media (prefers-reduced-motion:reduce){.reader::after{animation:none}.mycard{transition:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const SNACKS=[{id:'cookie',n:'쿠키',e:'🍪'},{id:'banana',n:'바나나',e:'🍌'},{id:'berry',n:'딸기',e:'🍓'},{id:'popcorn',n:'팝콘',e:'🍿'},{id:'cheese',n:'치즈',e:'🧀'}];
+const DRINKS=[{id:'milk',n:'우유',e:'🥛'},{id:'apple',n:'사과 주스',e:'🧃'},{id:'water',n:'물',e:'💧'},{id:'orange',n:'오렌지 주스',e:'🍊'}];
+const MAX=2;
+const S={screen:'start',snacks:{},drink:null,hint:''};
+const app=document.getElementById('app');
+let lastText='';
+const WELCOME=new Audio('welcome.mp3');
+WELCOME.preload='auto';
+function stopWelcome(){try{WELCOME.pause();WELCOME.currentTime=0;}catch(e){}}
+function playWelcome(){
+  try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}
+  stopWelcome();
+  const p=WELCOME.play();
+  if(p&&p.catch)p.then(()=>{S.blocked=false;}).catch(()=>{S.blocked=true;if(S.screen==='start')render();});
+}
+function replay(){S.screen==='start'?playWelcome():speak(lastText);}
+
+function speak(t){
+  lastText=t;stopWelcome();
+  try{
+    const s=window.speechSynthesis; if(!s)return;
+    s.cancel();
+    const u=new SpeechSynthesisUtterance(t);
+    u.lang='ko-KR';u.rate=.9;u.pitch=1.25;
+    const v=s.getVoices().find(v=>v.lang&&v.lang.replace('_','-').startsWith('ko'));
+    if(v)u.voice=v;
+    s.speak(u);
+  }catch(e){}
+}
+const total=()=>Object.values(S.snacks).reduce((a,b)=>a+b,0);
+const find=(L,id)=>L.find(x=>x.id===id);
+const STEP={snack:0,drink:1,cart:2,pay:3,nfc:3};
+
+const VOICE={
+  start:'안녕! 간식 가게에 어서 와. 시작하기 버튼을 눌러 줘.',
+  snack:'먹고 싶은 과자를 골라 보자. 한 개만 골라도 되고, 두 개를 골라도 돼.',
+  drink:'이제 마실 음료를 하나 골라 보자.',
+  cart:'내가 고른 간식을 확인해 보자. 맞으면 결제하기 버튼을 눌러 줘.',
+  pay:'결제할 시간이야. 카드 결제 버튼을 눌러 줘.',
+  nfc:'내 카드를 눌러서 동그란 곳에 살짝 대 보자.',
+  done:'결제가 끝났어! 맛있게 먹어. 안녕!'
+};
+
+function go(sc){S.screen=sc;S.hint='';render();if(sc==='start')playWelcome();else speak(VOICE[sc]);}
+function startBtn(){if(S.unlockTap){S.unlockTap=false;return;}go('snack');}
+function reset(){S.snacks={};S.drink=null;go('start');}
+
+function topBar(){
+  const i=STEP[S.screen];
+  if(i===undefined)return `<div class="top"><span></span><button class="say" onclick="replay()" aria-label="다시 듣기">🔊</button></div>`;
+  return `<div class="top"><div class="steps" aria-hidden="true">${[0,1,2,3].map(k=>`<span class="${k<i?'done':k===i?'on':''}"></span>`).join('')}</div><button class="say" onclick="replay()" aria-label="다시 듣기">🔊</button></div>`;
+}
+
+function addSnack(id,d){
+  const c=S.snacks[id]||0;
+  if(d>0&&total()>=MAX){S.hint='과자는 두 개까지만 고를 수 있어요';render();speak('과자는 두 개까지만 고를 수 있어요.');return;}
+  const n=Math.max(0,c+d);
+  if(n)S.snacks[id]=n;else delete S.snacks[id];
+  S.hint='';render();
+  speak(d>0?`${find(SNACKS,id).n} 담았어요.`:`${find(SNACKS,id).n} 뺐어요.`);
+}
+function pickSnack(id){ if(!S.snacks[id])addSnack(id,1); else addSnack(id,-S.snacks[id]); }
+function pickDrink(id){S.drink=id;render();speak(find(DRINKS,id).n+' 선택!');}
+
+function tapCard(){
+  const c=document.getElementById('mycard'),r=document.getElementById('reader'),m=document.getElementById('msg');
+  if(c.classList.contains('tap'))return;
+  c.classList.add('tap');r.classList.add('busy');m.textContent='읽는 중이에요…';
+  setTimeout(()=>{
+    r.classList.remove('busy');r.classList.add('ok');r.textContent='✅';m.textContent='카드 결제 완료!';
+    speak('삐빅! 카드 결제가 되었어요.');
+    setTimeout(()=>go('done'),1600);
+  },1200);
+}
+
+function render(){
+  let h=topBar();
+  const sc=S.screen;
+  if(sc==='start'){
+    h+=`<div class="center"><div class="big">🍪🥛</div><h1>콩콩 간식 가게</h1><p class="sub">과자와 음료를 골라 보자!</p>${S.blocked?'<p class="tag" style="font-size:22px">👆 화면을 한 번 터치하면 인사말이 나와요</p>':''}</div>
+    <div class="foot"><button class="btn" onclick="startBtn()">시작하기 ▶</button></div>`;
+  }
+  if(sc==='snack'){
+    h+=`<div><h1>🍪 과자를 골라요</h1><p class="sub">1개 또는 2개 (같은 과자 2개도 좋아요) · 지금 ${total()}개</p></div>
+    <div class="grid">${SNACKS.map(s=>{const c=S.snacks[s.id]||0;return `<div class="card ${c?'sel':''}" role="button" tabindex="0" onclick="pickSnack('${s.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickSnack('${s.id}')}">
+      ${c?`<span class="badge">${c}</span>`:''}<span class="e">${s.e}</span><span class="n">${s.n}</span>
+      <span class="pm" onclick="event.stopPropagation()"><button aria-label="${s.n} 빼기" onclick="addSnack('${s.id}',-1)" ${c?'':'disabled'}>−</button><b>${c}</b><button aria-label="${s.n} 더하기" onclick="addSnack('${s.id}',1)">+</button></span></div>`}).join('')}</div>
+    <p class="hint">${S.hint}</p>
+    <div class="foot"><button class="btn ghost" onclick="go('start')">◀ 처음</button><button class="btn" ${total()?'':'disabled'} onclick="go('drink')">다음 ▶</button></div>`;
+  }
+  if(sc==='drink'){
+    h+=`<div><h1>🥤 음료를 골라요</h1><p class="sub">음료는 꼭 한 개!</p></div>
+    <div class="grid">${DRINKS.map(d=>`<button class="card ${S.drink===d.id?'sel':''}" onclick="pickDrink('${d.id}')">${S.drink===d.id?'<span class="badge">✔</span>':''}<span class="e">${d.e}</span><span class="n">${d.n}</span></button>`).join('')}</div>
+    <div class="foot"><button class="btn ghost" onclick="go('snack')">◀ 이전</button><button class="btn" ${S.drink?'':'disabled'} onclick="go('cart')">다음 ▶</button></div>`;
+  }
+  if(sc==='cart'){
+    h+=`<div><h1>🧺 장바구니</h1><p class="sub">내가 고른 간식이 맞나요?</p></div>
+    <div class="cart">${Object.entries(S.snacks).map(([id,c])=>{const s=find(SNACKS,id);return `<div class="row"><span class="e">${s.e}</span><span class="n">${s.n}</span><span class="q">× ${c}</span></div>`}).join('')}
+    <div class="row"><span class="e">${find(DRINKS,S.drink).e}</span><span class="n">${find(DRINKS,S.drink).n}</span><span class="q">× 1</span></div></div>
+    <div class="foot"><button class="btn ghost" onclick="go('snack')">다시 고르기</button><button class="btn" onclick="go('pay')">결제하기 ▶</button></div>`;
+  }
+  if(sc==='pay'){
+    h+=`<div><h1>💳 결제해요</h1><p class="sub">아래 버튼을 눌러 주세요</p></div>
+    <div class="center"><button class="btn" style="flex:none;width:100%;max-width:420px;min-height:120px;font-size:36px" onclick="go('nfc')">💳 카드 결제</button>
+    <p class="tag">연습용 가상 결제예요. 진짜 돈은 나가지 않아요.</p></div>
+    <div class="foot"><button class="btn ghost" onclick="go('cart')">◀ 이전</button></div>`;
+  }
+  if(sc==='nfc'){
+    h+=`<div class="center" style="gap:20px"><h1>카드를 대 주세요</h1>
+    <div class="reader" id="reader">📶</div>
+    <p class="sub" id="msg">카드를 눌러서 동그라미에 대 보세요</p>
+    <button class="mycard" id="mycard" onclick="tapCard()" aria-label="가상 카드 대기">💳</button>
+    <p class="tag">NFC 가상 결제 · 실제 결제 없음</p></div>
+    <div class="foot"><button class="btn ghost" onclick="go('pay')">◀ 이전</button></div>`;
+  }
+  if(sc==='done'){
+    h+=`<div class="center"><div class="big">🎉</div><h1>결제 완료!</h1><p class="sub">맛있게 먹어요</p></div>
+    <div class="foot"><button class="btn" onclick="reset()">처음으로 ▶</button></div>`;
+  }
+  app.innerHTML=h;
+}
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=()=>{};}
+render();
+playWelcome();
+document.addEventListener('pointerdown',()=>{
+  if(S.screen==='start'&&S.blocked){S.unlockTap=true;setTimeout(()=>{S.unlockTap=false;},700);playWelcome();}
+},true);
+</script>
+</body>
+</html>
